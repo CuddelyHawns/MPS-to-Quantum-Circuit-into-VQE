@@ -1,9 +1,6 @@
-### The TNQC is the tensor network quantum circuit which encodes the MPS.
+### The TNQC is the tensor network quantum circuit which encodes the MPS. The generate_mpds and deep! function follow the algorithm outlined by [source]. 
 
 function generate_mpds(psi)
-"""
-Takes the MPS (psi), and generates a single layer of disentangling gates, which map the MPS onto a product state with high fidelity
-"""
     N = length(psi)
     psi = copy(psi)
     mpds = Dict{Int, ITensor}()

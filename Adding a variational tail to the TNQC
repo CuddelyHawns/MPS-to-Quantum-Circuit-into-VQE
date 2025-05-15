@@ -1,0 +1,73 @@
+### We add a variational tail to the end of our TNQC. The TNQC serves to start the optimisation in a region already close to the true ground state - warm start. The variational tail is what is being optimised. Again, we have two snippets of code, one that generates a single circuit, and one that takes circuits_by_depth and adds a tail to each of the circuits. 
+### Keep in mind that the variational tail is dependent on the basis of the Hamiltonian. The code here is for an XYZ spin Hamiltonian.
+
+### Here, we take the individual TNQC called 'qc' and add the variational tail:
+n_qubits = qc.num_qubits
+p = 1 -> p is the depth, can play around with it.
+
+params = []
+ansatz = QuantumCircuit(n_qubits)
+
+for layer in range(p):
+    
+    for j in range(n_qubits - 1):
+        # RXX
+        phi = Parameter(f"ϕ_{len(params)}"); params.append(phi)
+        ansatz.append(RXXGate(phi), [j, j+1])
+        # RYY
+        phi = Parameter(f"ϕ_{len(params)}"); params.append(phi)
+        ansatz.append(RYYGate(phi), [j, j+1])
+        # RZZ
+        phi = Parameter(f"ϕ_{len(params)}"); params.append(phi)
+        ansatz.append(RZZGate(phi), [j, j+1])
+    # Single-qubit RX field rotations
+    for j in range(n_qubits):
+        phi = Parameter(f"ϕ_{len(params)}"); params.append(phi)
+        ansatz.append(RXGate(phi), [j])
+
+full_circ = qc.compose(ansatz)
+full_circ.draw("mpl")
+
+
+### Here, we take circuits_by_depth and add a variational tail to each circuit:
+
+max_p = any number -> it's the maximum variational depth you'd like to generate
+def generate_augmented_circuits(circuits_by_depth, max_p):
+    augmented = {}
+    for D, base_qc in circuits_by_depth.items():
+        n_qubits = base_qc.num_qubits
+
+        for p in range(1, max_p + 1):
+            # collect parameters for this (D,p) ansatz
+            params = []
+            tail = QuantumCircuit(n_qubits, name=f"var_D{D}_p{p}")
+
+            # build p layers of the 2q+1q pattern
+            for layer_idx in range(p):
+                # two-qubit rotations across the chain
+                for q in range(n_qubits - 1):
+                    for GateClass in (RXXGate, RYYGate, RZZGate):
+                        φ = Parameter(f"ϕ_D{D}_p{p}_{len(params)}")
+                        params.append(φ)
+                        tail.append(GateClass(φ), [q, q+1])
+                # single-qubit RX on each qubit
+                for q in range(n_qubits):
+                    φ = Parameter(f"ϕ_D{D}_p{p}_{len(params)}")
+                    params.append(φ)
+                    tail.append(RXGate(φ), [q])
+
+            # compose the MPS core + variational tail
+            full = base_qc.compose(tail, inplace=False)
+            full.name = f"MPS{D}_var{p}"
+            augmented[(D, p)] = full
+
+    return augmented
+
+augmented_circuits = generate_augmented_circuits(circuits_by_depth, max_p=8)
+
+#print(f"Total circuits generated: {len(augmented_circuits)}")  
+
+# Inspect one circuit
+D, p = 4, 2 -> D is depth of TNQC and p is depth of variational tail
+full_circ = augmented_circuits[(D,p)]
+full_circ.draw("mpl")

@@ -1,6 +1,6 @@
 ### Create an equivalent hamiltonian in Qiskit in terms of SparsePauliOp. We use this hamiltonian to benchmark the theoretical groundstate value by computing its state vector.
 ### The hamiltonian is also used to generate standard Ansatzs in Qiskit: 
-
+### The hamiltonian is also used to define the cost function.
 
 def xyz_hamiltonian(N, Jx, Jy, Jz, h):
     pauli_labels = []

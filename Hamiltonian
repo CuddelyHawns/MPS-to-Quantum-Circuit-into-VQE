@@ -1,6 +1,6 @@
 ### Create an equivalent hamiltonian in Qiskit in terms of SparsePauliOp. We use this hamiltonian to benchmark the theoretical groundstate value by computing its state vector.
 ### The hamiltonian is also used to generate standard Ansatzs in Qiskit: 
-### The hamiltonian is also used to define the cost function.
+### The hamiltonian is also used to define the cost function for the VQE simulation.
 
 def xyz_hamiltonian(N, Jx, Jy, Jz, h):
     pauli_labels = []
@@ -35,10 +35,18 @@ def xyz_hamiltonian(N, Jx, Jy, Jz, h):
     
     return SparsePauliOp(pauli_labels, coeffs)
 
-N  = 6  # number of qubits
-Jx = 5.0      # Sx–Sx coupling
-Jy = 6.0       # Sy–Sy coupling
-Jz = 5.0       # Sz–Sz coupling
-h  = 0.5       # transverse field
+
+# These variables should exactly match those used to generate the initial MPS in your julia notebook
+N  = 6          # number of qubits
+Jx = 5.0        # Sx–Sx coupling
+Jy = 6.0        # Sy–Sy coupling
+Jz = 5.0        # Sz–Sz coupling
+h  = 0.5        # transverse field
 
 hamiltonian = xyz_hamiltonian(N, Jx, Jy, Jz, h)
+
+# a quick check to make sure the hamiltonian is correctly compiled:
+numpy_solver = NumPyMinimumEigensolver()
+result = numpy_solver.compute_minimum_eigenvalue(operator=hamiltonian)
+groundstate_value = result.eigenvalue.real
+print(f"groundstate value: {groundstate_value:.5f}") # if this ground state value is the same as the ground state from your Julia notebook (calculated using dmrg), then you have a matchinh hamiltonian.

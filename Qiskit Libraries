@@ -1,3 +1,5 @@
+### Execute all of these in your qiskit cell
+
 # ─── Core QuantumCircuit and Parameters ───────────────────────────────────────
 from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter, ParameterVector

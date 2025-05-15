@@ -1,0 +1,50 @@
+using ITensors, ITensorMPS, LinearAlgebra
+"""
+This code can be found on the ITensor.jl website. It simply generates an MPS encoding the ground state of a chosen Hamiltonian
+"""
+
+function generate_mps_xyz(
+    N::Int,
+    Jx::Float64,
+    Jy::Float64,
+    Jz::Float64,
+    nsweeps::Int,
+    cutoff::Vector{Float64},
+)
+    sites = siteinds("S=1/2", N)
+
+
+    os = OpSum()
+    for j in 1:N-1
+        os += Jx, "Sx", j, "Sx", j+1
+        os += Jy, "Sy", j, "Sy", j+1
+        os += Jz, "Sz", j, "Sz", j+1
+    end
+    for j in 1:N
+        os += -h, "Sx", j
+    end
+    H = MPO(os, sites)
+
+    # 3) Initialize a random MPS (here all spins "Dn")
+    psi0 = random_mps(sites, n -> "Dn")
+
+    # 4) Run DMRG
+    energy, psi1 = dmrg(H, psi0; nsweeps=nsweeps, cutoff=cutoff)
+
+    # 5) Left‐canonicalize
+    psi_lcanon = orthogonalize!(psi1, 1)
+
+    return psi_lcanon, energy
+end
+
+
+N       = 6
+Jx      = 5.0         
+Jy      = 6.0         
+Jz      = 5.0                
+nsweeps = 10
+cutoff  = [1e-10]
+
+psi_non_truncated, Energy = generate_mps_xyz(N, Jx, Jy, Jz, h, nsweeps, cutoff)
+sites = siteinds(psi_non_truncated)
+product_state = MPS(sites, "Up")

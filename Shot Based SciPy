@@ -1,0 +1,102 @@
+### The other optimization code uses statevector. Since we want to replicate the sampling-based VQE, we introduce shots and seed numbers using AerEstimator.
+
+# For a single Circuit:
+seed   = 75
+shots  = 1024
+
+
+estimator = AerEstimator(
+    run_options={"seed": seed, "shots": shots},
+    transpile_options={"seed_transpiler": seed},
+)
+
+
+
+H_op = hamiltonian if not isinstance(hamiltonian, np.ndarray) \
+       else Operator(hamiltonian)
+
+def energy(param_vals):
+
+    bound = full_circ.assign_parameters(
+        {p: v for p, v in zip(params, param_vals)},
+        inplace=False)
+
+    job = estimator.run([bound], [H_op])
+    result = job.result()
+    
+    return float(np.real(result.values[0]))
+
+
+init_vals = np.ones(len(params))
+energies  = []
+
+def record_energy(xk):
+    energies.append(energy(xk))
+
+res      = minimize(energy, init_vals, method='COBYLA', callback=record_energy, options={'maxiter': 2000})
+opt_vals = res.x
+
+
+
+
+### For Multiple Circuit:
+seed   = 75
+shots  = 1024
+
+estimator = AerEstimator(
+    run_options={"seed": seed, "shots": shots},
+    transpile_options={"seed_transpiler": seed},
+)
+
+
+H_op = (
+    Operator(hamiltonian)
+    if isinstance(hamiltonian, np.ndarray)
+    else hamiltonian
+)
+
+records = []
+
+for (D, p), qc in augmented_circuits.items():
+    n_qubits = qc.num_qubits
+
+    params = [
+        param
+        for param in qc.parameters
+        if param.name.startswith(f"ϕ_D{D}_p{p}_")
+    ]
+
+    
+    def energy_fn(x, qc=qc, params=params, H=H_op):
+        # bind the parameters
+        bound = qc.assign_parameters(
+            {p: v for p, v in zip(params, x)},
+            inplace=False
+        )
+        
+        job = estimator.run(circuits=[bound], observables=[H])
+        value = job.result().values[0]
+        return float(np.real(value))
+
+    
+    init_vals = np.ones(len(params))
+    res = minimize(
+        energy_fn,
+        init_vals,
+        method='COBYLA',
+        options={'maxiter': 2000}        
+    )
+
+    
+    pct_err = abs((res.fun - groundstate_value) / groundstate_value) * 100
+
+    records.append({
+        'qubits':   n_qubits,
+        'MPS_depth': D,
+        'var_depth': p,
+        'pct_error': pct_err
+    })
+
+df = pd.DataFrame(records)
+df = df.sort_values(['MPS_depth','var_depth']).reset_index(drop=True)
+print(df.to_string(index=False))

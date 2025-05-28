@@ -1,9 +1,0 @@
-using Pkg
-Pkg.add("IJulia")
-Pkg.add("ITensors")
-Pkg.add("ITensorMPS")
-Pkg.add("LinearAlgebra")
-Pkg.add("Random")
-Pkg.add("Plots")
-Pkg.add("Printf")
-Pkg.add("OrderedCollections")
